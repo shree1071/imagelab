@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,9 +8,16 @@ from sqlmodel import Session
 
 from app.database import get_db
 from app.exceptions import PipelineExecutionError
-from app.models.pipeline import PipelineRequest, PipelineResponse, StepInspectResponse
+from app.models.pipeline import (
+    ExportPythonRequest,
+    ExportPythonResponse,
+    PipelineRequest,
+    PipelineResponse,
+    StepInspectResponse,
+)
 from app.services.graph_engine import compile_graph
 from app.services.pipeline_executor import execute_pipeline, inspect_step
+from app.services.python_exporter import export_graph_to_python, export_pipeline_to_python
 from app.utils.image import decode_base64_image
 
 logger = logging.getLogger(__name__)
@@ -84,3 +92,41 @@ def inspect_execution_step(execution_id: str, block_id: str):
     if result is None:
         raise HTTPException(status_code=404, detail="Step result not found or expired")
     return StepInspectResponse(success=True, **result)
+
+
+@router.post("/v1/pipeline/export-python", response_model=ExportPythonResponse)
+def export_python_pipeline(request: ExportPythonRequest, session: SessionDep):
+    """Export a pipeline or graph as a runnable Python OpenCV script."""
+    try:
+        if request.graph is not None:
+            code, unsupported = export_graph_to_python(
+                graph=request.graph,
+                session=session,
+                pipeline_name=request.pipeline_name,
+                input_default=request.input_filename,
+                output_default=request.output_filename,
+            )
+        else:
+            code, unsupported = export_pipeline_to_python(
+                steps=request.pipeline or [],
+                pipeline_name=request.pipeline_name,
+                input_default=request.input_filename,
+                output_default=request.output_filename,
+            )
+
+        name_for_slug = request.pipeline_name.strip()
+        if name_for_slug.lower().endswith(".py"):
+            name_for_slug = name_for_slug[:-3]
+        slug = re.sub(r"[^a-zA-Z0-9_-]+", "_", name_for_slug.lower()).strip("_")
+        filename = f"{slug or 'pipeline'}.py"
+        return ExportPythonResponse(
+            success=True,
+            code=code,
+            filename=filename,
+            unsupported_operators=unsupported,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        logger.exception("Failed to export pipeline to Python")
+        raise HTTPException(status_code=500, detail=f"Failed to export pipeline: {e}") from e

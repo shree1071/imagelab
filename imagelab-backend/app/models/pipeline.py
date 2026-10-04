@@ -95,3 +95,26 @@ class StepInspectResponse(BaseModel):
     timing_ms: float | None = None
     analysis: ImageAnalysis
     histogram: ImageHistogram
+
+
+class ExportPythonRequest(BaseModel):
+    graph: PipelineGraph | None = None
+    pipeline: list[PipelineStep] | None = None
+    pipeline_name: str = "ImageLab Pipeline"
+    input_filename: str = "input.jpg"
+    output_filename: str = "output.jpg"
+
+    @model_validator(mode="after")
+    def validate_payload_presence(self):
+        if self.pipeline is None and self.graph is None:
+            raise ValueError("Field 'pipeline' or 'graph' is required.")
+        if self.pipeline is None:
+            self.pipeline = []
+        return self
+
+
+class ExportPythonResponse(BaseModel):
+    success: bool
+    code: str
+    filename: str
+    unsupported_operators: list[str] = Field(default_factory=list)
