@@ -263,17 +263,22 @@ export function renderDiffToCanvas(
 
   if (!ctxA || !ctxB) return null;
 
-  ctxA.drawImage(imgA, 0, 0, width, height);
-  ctxB.drawImage(imgB, 0, 0, width, height);
+  try {
+    ctxA.drawImage(imgA, 0, 0, width, height);
+    ctxB.drawImage(imgB, 0, 0, width, height);
 
-  const dataA = ctxA.getImageData(0, 0, width, height).data;
-  const dataB = ctxB.getImageData(0, 0, width, height).data;
+    const dataA = ctxA.getImageData(0, 0, width, height).data;
+    const dataB = ctxB.getImageData(0, 0, width, height).data;
 
-  const { metrics, diffBuffer } = computePixelDifference(dataA, dataB, width, height, options);
+    const { metrics, diffBuffer } = computePixelDifference(dataA, dataB, width, height, options);
 
-  const outImageData = ctx.createImageData(width, height);
-  outImageData.data.set(diffBuffer);
-  ctx.putImageData(outImageData, 0, 0);
+    const outImageData = ctx.createImageData(width, height);
+    outImageData.data.set(diffBuffer);
+    ctx.putImageData(outImageData, 0, 0);
 
-  return metrics;
+    return metrics;
+  } catch (err) {
+    console.warn("Failed to render heatmap difference (canvas may be tainted):", err);
+    return null;
+  }
 }

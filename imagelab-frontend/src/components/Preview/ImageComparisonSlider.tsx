@@ -118,7 +118,20 @@ export default function ImageComparisonSlider({
 
   // Global keyboard shortcut: Hold '\' to view original (Lightroom style)
   useEffect(() => {
+    const isTextInputTarget = (target: EventTarget | null): boolean => {
+      if (!target || !(target instanceof HTMLElement)) return false;
+      const tagName = target.tagName.toLowerCase();
+      return (
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "select" ||
+        target.isContentEditable ||
+        Boolean(target.closest(".blocklyHtmlInput, input, textarea"))
+      );
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTextInputTarget(e.target)) return;
       if (e.key === "\\" && !e.repeat) {
         setIsHoldingBefore(true);
       }
@@ -128,12 +141,17 @@ export default function ImageComparisonSlider({
         setIsHoldingBefore(false);
       }
     };
+    const handleBlur = () => {
+      setIsHoldingBefore(false);
+    };
 
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleBlur);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleBlur);
     };
   }, []);
 

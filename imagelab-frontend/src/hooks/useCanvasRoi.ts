@@ -237,20 +237,29 @@ export function useCanvasRoi({
         selectedBlock = null;
       }
 
-      const targetBlocks = selectedBlock
-        ? [selectedBlock]
-        : workspace.getAllBlocks(false).filter((b) => {
-            return b.type === "geometric_cropimage" || b.type === "drawingoperations_drawrectangle";
-          });
+      const isCompatibleBlock = (b: Blockly.BlockSvg | null): boolean =>
+        Boolean(
+          b && (b.type === "geometric_cropimage" || b.type === "drawingoperations_drawrectangle"),
+        );
 
-      if (targetBlocks.length === 0) {
+      let target: Blockly.BlockSvg | null = null;
+      if (selectedBlock && isCompatibleBlock(selectedBlock)) {
+        target = selectedBlock;
+      } else {
+        const compatibleBlocks = workspace
+          .getAllBlocks(false)
+          .filter(isCompatibleBlock) as Blockly.BlockSvg[];
+        if (compatibleBlocks.length > 0) {
+          target = compatibleBlocks[0];
+        }
+      }
+
+      if (!target) {
         return {
           success: false,
           message: "No Crop or Rectangle blocks found in workspace. Add a Crop Image block first.",
         };
       }
-
-      const target = targetBlocks[0];
 
       const normX1 = Math.round(Math.min(roiBox.x1, roiBox.x2));
       const normY1 = Math.round(Math.min(roiBox.y1, roiBox.y2));

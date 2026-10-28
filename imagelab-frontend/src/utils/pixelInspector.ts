@@ -241,7 +241,8 @@ export function extractImageDataFromImageElement(img: HTMLImageElement): ImageDa
 
     ctx.drawImage(img, 0, 0);
     return ctx.getImageData(0, 0, img.naturalWidth, img.naturalHeight);
-  } catch {
+  } catch (err) {
+    console.warn("Failed to extract ImageData from image element (canvas may be tainted):", err);
     return null;
   }
 }
